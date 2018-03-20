@@ -18,26 +18,136 @@
     <!-- Prevent session bleed caused by single threaded embedded browser and sessionStorage API -->
     <!-- https://github.com/cerner/fhir-client-cerner-additions -->
     <script src='./lib/js/fhir-client-cerner-additions-1.0.0.js'></script>
-    <script>
-      function auth() {
+
+    
+<script>
+    function auth() {
+
         var appIdVal = document.getElementById('appId').value;
-        alert('App ID: ' + appIdVal);
-        
+        var scope = document.getElementById('scopeRequested').value;
+
         FHIR.oauth2.authorize({
           'client_id': appIdVal,
-          'scope':  'patient/Patient.read patient/Observation.read launch online_access openid profile'
+          'scope': scope
         });
-      }
+    }
 
-    </script>
-    <div>
-      <label>App ID: <input type="text" id="appId" /> </label>
-      <input type="button" value="Authorize" onclick="auth()" />
-    </div>
-    <div class="spinner">
-      <div class="bounce1"></div>
-      <div class="bounce2"></div>
-      <div class="bounce3"></div>
-    </div>
+    var getUrlParameter = function getUrlParameter(sParam) {
+        var sPageURL = decodeURIComponent(window.location.search.substring(1)),
+            sURLVariables = sPageURL.split('&'),
+            sParameterName,
+            i;
+
+        for (i = 0; i < sURLVariables.length; i++) {
+            sParameterName = sURLVariables[i].split('=');
+
+            if (sParameterName[0] === sParam) {
+                return sParameterName[1] === undefined ? true : sParameterName[1];
+            }
+        }
+    };
+
+    var updateParamTextIfNeeded = function (paramText, spanElementId) {
+        var spanElement = jQuery('#' + spanElementId);
+
+        if (!paramText || paramText.length == 0) {
+            spanElement.text = 'No value passed';
+            spanElement.removeClass('label-default').addClass('label-danger');
+        }
+        else
+            spanElement.text(paramText);
+    };
+
+    var updateScopeIfNeeded = function () {
+        var standAlonePatientAppParam = getUrlParameter('isAfhcanStandAlonePatientApp');
+        var isStandAlonePatientApp = !standAlonePatientAppParam && standAlonePatientAppParam == 1;
+
+        document.getElementById('scopeRequested').value = isStandAlonePatientApp
+            ? 'patient/Patient.read patient/Observation.read launch/patient online_access openid profiles'
+            : 'patient/Patient.read patient/Observation.read launch online_access openid profile';
+
+        /*  Scope for EHR App Auth
+            'patient/Patient.read patient/Observation.read launch online_access openid profile'
+ 
+
+            Scope for Stand-alone Patient App Auth
+            'patient/Patient.read patient/Observation.read launch/patient online_access openid profile'
+
+            Note for Cerner doc: 
+            launch/patient is used here instead of launch. 
+            This is because during a standalone launch the app does not have 
+            access to the patient in context and thereby it would need to request 
+            permission to access patient information.        
+        */
+    }
+
+    jQuery(document).ready(function () {
+        jQuery('#getAppsClientId').modal();
+
+        //Show expected pararms
+        var issTex = getUrlParameter('iss');
+        if (!issTex || issTex.length == 0) {
+            document.getElementById("issTextVal").textContent = 'No value passed';
+            jQuery('#issTextVal').removeClass('label-default').addClass('label-danger');
+        }
+        else
+            document.getElementById("issTextVal").textContent = issTex;
+
+
+        var launchText = getUrlParameter('launch');
+        if (!issTex || issTex.length == 0) {
+            document.getElementById("launchTextVal").textContent = 'No value passed';
+            jQuery('#launchTextVal').removeClass('label-default').addClass('label-danger');
+        }
+        else
+            document.getElementById("launchTextVal").textContent = launchText;
+
+        //Update scope if this is stand-alone patient app request
+        //based on custom param we created
+        updateScopeIfNeeded();
+    });
+</script>
+<h2>Launch App</h2>
+<div>
+    <div class="modal fade" tabindex="-1" role="dialog" id="getAppsClientId">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Authorize</h4>
+                </div>
+                <div class="modal-body">
+                    <p>Request&hellip;</p>
+                    <div class="input-group">
+                        <span class="input-group-addon" id="basic-addon3">App Client Id</span>
+                        <input type="text" class="form-control" id="appId" aria-describedby="basic-addon3" value="">
+                    </div>
+                    <br />
+                    <div class="input-group">
+                        <span class="input-group-addon" id="basic-addon3">Scope</span>
+                        <input type="text" class="form-control" id="scopeRequested" aria-describedby="basic-addon3" value="">
+                    </div>
+                    <br /><br />
+                    <div class="panel panel-default">
+                        <div class="panel-heading" >
+                            <h3 class="panel-title">Passed Params</h3>
+                        </div>
+                        <div class="panel-body" id="issTextContainer">
+                            <h5>ISS (EHR's FHIR Endpoint) <br /><span class="label label-default" id="issTextVal"></span></h5>
+                            <br /><br />
+                            <h5>Launch (Identifier) <br /><span class="label label-default" id="launchTextVal"></span></h5>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="auth() ">Authorize</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+</div>
+    
   </body>
 </html>
